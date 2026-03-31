@@ -24,3 +24,31 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* App-wide layout helpers */
+.app-container {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+}
+
+.page-shell {
+  padding-block: 1.5rem;
+}
+
+.section-stack > * + * {
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    width: min(100% - 3rem, 72rem);
+  }
+
+  .page-shell {
+    padding-block: 2rem;
+  }
+
+  .section-stack > * + * {
+    margin-top: 1.5rem;
+  }
+}

@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MacroTrack
 
-## Getting Started
+Next.js app for logging meals and tracking daily calories and macros (protein, carbs, fats) against goals. Uses SQLite + Prisma, JWT sessions, and optional FatSecret food search (server-side).
 
-First, run the development server:
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev    # development server (http://localhost:3000)
+npm run build  # production build
+npm run start  # run production server
+npm run lint   # ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Prisma: `npx prisma migrate dev` / `npx prisma generate` as needed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set at least:
 
-## Learn More
+- `DATABASE_URL` — e.g. `file:./prisma/dev.db`
+- `SESSION_SECRET` — long random string for JWT cookies
+- `FATSECRET_CLIENT_ID` / `FATSECRET_CLIENT_SECRET` — optional; enables live food search (IP allowlist required in FatSecret console)
 
-To learn more about Next.js, take a look at the following resources:
+## Project layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | Role |
+|------|------|
+| `app/(marketing)/` | Landing route group (URL `/` unchanged). Page-specific UI lives in `_components/`. |
+| `app/dashboard/` | Logged-in dashboard; widgets in `dashboard/_components/`. |
+| `app/api/` | Route handlers (auth, goals, log entries, dashboard summary, food search, contact). |
+| `app/globals.css` | Tailwind v4 + design tokens (active stylesheet). |
+| `components/ui/` | shadcn/Radix primitives and shared hooks (`use-toast`, `use-mobile`). |
+| `components/theme-provider.tsx` | Theme wrapper (root layout). |
+| `lib/` | Auth, Prisma client, Zod schemas, FatSecret client, small helpers (`format-macros`, `utils`). |
+| `prisma/` | Schema and SQLite migrations. |
+| `proxy.ts` | Next.js 16 **proxy** (replaces `middleware`): auth redirects for `/dashboard`, `/login`, `/signup`. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+AI assistants: see `AGENTS.md` for Next.js 16 conventions used in this repo.
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Performance**: App Router keeps server/client boundaries clear; client widgets use `"use client"` only where needed. Heavy UI is code-split per route automatically.
+- **Growth**: Add new top-level areas as `app/<segment>/` with colocated `_components/`; keep shared primitives in `components/ui/` and domain logic in `lib/` or `app/api/`.

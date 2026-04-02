@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String?
+  displayName  String?
+  timezone     String         @default("UTC")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  goals        UserGoal[]
+  logEntries   FoodLogEntry[]
+}
+
+model UserGoal {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  caloriesTarget Int
+  proteinTarget  Int
+  carbsTarget    Int
+  fatsTarget     Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FoodCatalogItem {
+  id              String   @id @default(cuid())
+  name            String
+  brand           String?
+  servingSize     String
+  calories        Float
+  protein         Float
+  carbs           Float
+  fats            Float
+  barcode         String?  @unique
+  source          String   @default("seed")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FoodLogEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  mealType    String
+  name        String
+  brand       String?
+  servingSize String
+  calories    Float
+  protein     Float
+  carbs       Float
+  fats        Float
+  sourceType  String   @default("manual")
+  loggedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedAt])
+}

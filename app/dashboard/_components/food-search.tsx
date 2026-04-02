@@ -31,7 +31,9 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
   const [results, setResults] = useState<FoodItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
-  const [fatsecretIpHint, setFatsecretIpHint] = useState(false);
+  const [fatsecretWarning, setFatsecretWarning] = useState<
+    "none" | "ip-blocked" | "unavailable"
+  >("none");
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
       abortRef.current?.abort();
       setResults([]);
       setSearchError("");
-      setFatsecretIpHint(false);
+      setFatsecretWarning("none");
       setIsSearching(false);
       return;
     }
@@ -53,7 +55,7 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
 
       setIsSearching(true);
       setSearchError("");
-      setFatsecretIpHint(false);
+      setFatsecretWarning("none");
 
       void (async () => {
         try {
@@ -75,10 +77,10 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
 
           const data = Array.isArray(payload) ? (payload as FoodItem[]) : [];
           setResults(data);
-          setFatsecretIpHint(
-            response.headers.get("X-Food-Search-Warning") ===
-              "fatsecret-ip-blocked"
-          );
+          const w = response.headers.get("X-Food-Search-Warning");
+          if (w === "fatsecret-ip-blocked") setFatsecretWarning("ip-blocked");
+          else if (w === "fatsecret-unavailable") setFatsecretWarning("unavailable");
+          else setFatsecretWarning("none");
         } catch (e) {
           if (e instanceof Error && e.name === "AbortError") return;
           setSearchError("Search failed. Try again.");
@@ -135,7 +137,7 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
 
         {searchQuery.trim().length >= MIN_CHARS && (
           <div className="mt-4 space-y-2">
-            {fatsecretIpHint && (
+            {fatsecretWarning === "ip-blocked" && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
                 FatSecret blocked this server&apos;s IP (error 21). In the{" "}
                 <a
@@ -146,8 +148,14 @@ export function FoodSearch({ onAddFood }: FoodSearchProps) {
                 >
                   FatSecret developer console
                 </a>
-                , open your application and add your current public IP to the
-                allowlist. Until then, search uses the small local food list only.
+                , add your IP to the allowlist. Vercel uses changing IPs, so
+                use a static proxy or expect offline catalog only.
+              </div>
+            )}
+            {fatsecretWarning === "unavailable" && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
+                Live FatSecret search failed for this request. Showing the
+                offline catalog only (same as when FatSecret is unreachable).
               </div>
             )}
             {isSearching && (

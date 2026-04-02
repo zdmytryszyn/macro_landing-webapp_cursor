@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { foodSeeds } from "@/lib/food-seeds";
 import {
   isFatSecretConfigured,
   searchFoodsFatSecret,
@@ -6,76 +7,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const seedFoods = [
-  {
-    name: "Chicken Breast",
-    brand: "Generic",
-    servingSize: "100g",
-    calories: 165,
-    protein: 31,
-    carbs: 0,
-    fats: 3.6,
-  },
-  {
-    name: "Brown Rice",
-    brand: "Generic",
-    servingSize: "1 cup cooked",
-    calories: 216,
-    protein: 5,
-    carbs: 45,
-    fats: 1.8,
-  },
-  {
-    name: "Greek Yogurt",
-    brand: "Fage",
-    servingSize: "170g",
-    calories: 100,
-    protein: 17,
-    carbs: 6,
-    fats: 0.7,
-  },
-  {
-    name: "Avocado",
-    brand: "Generic",
-    servingSize: "1/2 medium",
-    calories: 160,
-    protein: 2,
-    carbs: 9,
-    fats: 15,
-  },
-  {
-    name: "Salmon Fillet",
-    brand: "Generic",
-    servingSize: "100g",
-    calories: 208,
-    protein: 20,
-    carbs: 0,
-    fats: 13,
-  },
-  {
-    name: "Banana",
-    brand: "Generic",
-    servingSize: "1 medium",
-    calories: 105,
-    protein: 1.3,
-    carbs: 27,
-    fats: 0.4,
-  },
-];
-
 async function ensureSeedFoods() {
   const count = await prisma.foodCatalogItem.count();
   if (count === 0) {
-    await prisma.foodCatalogItem.createMany({ data: seedFoods });
+    await prisma.foodCatalogItem.createMany({ data: [...foodSeeds] });
     return;
   }
   const existing = await prisma.foodCatalogItem.findMany({
     select: { name: true },
   });
   const names = new Set(existing.map((e: { name: string }) => e.name));
-  const missing = seedFoods.filter((s) => !names.has(s.name));
+  const missing = foodSeeds.filter((s) => !names.has(s.name));
   if (missing.length > 0) {
-    await prisma.foodCatalogItem.createMany({ data: missing });
+    await prisma.foodCatalogItem.createMany({ data: [...missing] });
   }
 }
 
@@ -95,14 +39,15 @@ async function searchLocalCatalog(query: string, limit: number) {
     orderBy: { name: "asc" },
     take: 500,
   });
+  type CatalogRow = (typeof all)[number];
 
   const foods = all.filter(
-    (f: FoodCatalogItem) =>
+    (f: CatalogRow) =>
       f.name.toLowerCase().includes(q) ||
       (f.brand?.toLowerCase().includes(q) ?? false)
   );
 
-  return foods.slice(0, cap).map((food: FoodCatalogItem) => ({
+  return foods.slice(0, cap).map((food: CatalogRow) => ({
     id: food.id,
     name: food.name,
     brand: food.brand ?? undefined,
@@ -139,7 +84,7 @@ export async function GET(request: Request) {
       console.error("[foods/search] FatSecret error:", err);
       if (ipBlocked) {
         console.warn(
-          "[foods/search] FatSecret rejected this server IP (code 21). Add your IP/CIDR in FatSecret Platform → your application → IP allowlist: https://platform.fatsecret.com"
+          "[foods/search] FatSecret rejected this server IP (code 21). Add Vercel/static egress or use FatSecret proxy: https://platform.fatsecret.com"
         );
       }
       const local = await searchLocalCatalog(query, safeLimit);
@@ -147,10 +92,11 @@ export async function GET(request: Request) {
         ...item,
         source: "local_fallback" as const,
       }));
+      const warning = ipBlocked ? "fatsecret-ip-blocked" : "fatsecret-unavailable";
       return Response.json(body, {
-        headers: ipBlocked
-          ? { "X-Food-Search-Warning": "fatsecret-ip-blocked" }
-          : {},
+        headers: {
+          "X-Food-Search-Warning": warning,
+        },
       });
     }
   }
